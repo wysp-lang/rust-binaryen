@@ -1,15 +1,15 @@
 use binaryen_sys::{
     BinaryenModuleCreate, BinaryenModuleDispose, BinaryenModuleRef, BinaryenPackedType,
-    BinaryenPackedTypeInt16, BinaryenPackedTypeInt8, BinaryenPackedTypeNotPacked, BinaryenType,
-    BinaryenTypeAnyref, BinaryenTypeArity, BinaryenTypeArrayref, BinaryenTypeAuto,
-    BinaryenTypeCreate, BinaryenTypeEqref, BinaryenTypeExpand, BinaryenTypeExternref,
-    BinaryenTypeFloat32, BinaryenTypeFloat64, BinaryenTypeFuncref, BinaryenTypeI31ref,
-    BinaryenTypeInt32, BinaryenTypeInt64, BinaryenTypeNone, BinaryenTypeNullExternref,
-    BinaryenTypeNullFuncref, BinaryenTypeNullref, BinaryenTypeStringref,
+    BinaryenPackedTypeInt16, BinaryenPackedTypeInt8, BinaryenPackedTypeNotPacked,
+    BinaryenStringFree, BinaryenType, BinaryenTypeAnyref, BinaryenTypeArity, BinaryenTypeArrayref,
+    BinaryenTypeAuto, BinaryenTypeCreate, BinaryenTypeEqref, BinaryenTypeExpand,
+    BinaryenTypeExternref, BinaryenTypeFloat32, BinaryenTypeFloat64, BinaryenTypeFuncref,
+    BinaryenTypeI31ref, BinaryenTypeInt32, BinaryenTypeInt64, BinaryenTypeNone,
+    BinaryenTypeNullExternref, BinaryenTypeNullFuncref, BinaryenTypeNullref, BinaryenTypeStringref,
     BinaryenTypeStringviewIter, BinaryenTypeStringviewWTF16, BinaryenTypeStringviewWTF8,
-    BinaryenTypeStructref, BinaryenTypeUnreachable, BinaryenTypeVec128,
+    BinaryenTypeStructref, BinaryenTypeToString, BinaryenTypeUnreachable, BinaryenTypeVec128,
 };
-use std::{fmt::Debug, mem::transmute, ptr::null_mut};
+use std::{ffi::CStr, fmt::Debug, mem::transmute, ptr::null_mut};
 
 #[repr(transparent)]
 struct Module {
@@ -174,57 +174,10 @@ impl Type {
 
 impl Debug for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self == &Self::none() {
-            write!(f, "Type::none()")?;
-        } else if self == &Self::int32() {
-            write!(f, "Type::int32()")?;
-        } else if self == &Self::int64() {
-            write!(f, "Type::int64()")?;
-        } else if self == &Self::float32() {
-            write!(f, "Type::float32()")?;
-        } else if self == &Self::float64() {
-            write!(f, "Type::float64()")?;
-        } else if self == &Self::vec128() {
-            write!(f, "Type::vec128()")?;
-        } else if self == &Self::funcref() {
-            write!(f, "Type::funcref()")?;
-        } else if self == &Self::externref() {
-            write!(f, "Type::externref()")?;
-        } else if self == &Self::anyref() {
-            write!(f, "Type::anyref()")?;
-        } else if self == &Self::eqref() {
-            write!(f, "Type::eqref()")?;
-        } else if self == &Self::i31ref() {
-            write!(f, "Type::i31ref()")?;
-        } else if self == &Self::structref() {
-            write!(f, "Type::structref()")?;
-        } else if self == &Self::arrayref() {
-            write!(f, "Type::arrayref()")?;
-        } else if self == &Self::stringref() {
-            write!(f, "Type::stringref()")?;
-        } else if self == &Self::stringviewWTF8() {
-            write!(f, "Type::stringviewWTF8()")?;
-        } else if self == &Self::stringviewWTF16() {
-            write!(f, "Type::stringviewWTF16()")?;
-        } else if self == &Self::stringview_iter() {
-            write!(f, "Type::stringview_iter()")?;
-        } else if self == &Self::nullref() {
-            write!(f, "Type::nullref()")?;
-        } else if self == &Self::null_externref() {
-            write!(f, "Type::null_externref()")?;
-        } else if self == &Self::null_funcref() {
-            write!(f, "Type::null_funcref()")?;
-        } else if self == &Self::unreachable() {
-            write!(f, "Type::unreachable()")?;
-        } else {
-            write!(f, "Type::tuple(&[")?;
-            let mut sep = "";
-            for t in self.iter() {
-                write!(f, "{}{:?}", sep, t)?;
-                sep = ", ";
-            }
-            write!(f, "])")?;
-        }
+        let ptr = unsafe { BinaryenTypeToString(self.r) };
+        let c_str = unsafe { CStr::from_ptr(ptr) };
+        write!(f, "{}", c_str.to_str().map_err(|_| std::fmt::Error)?)?;
+        unsafe { BinaryenStringFree(ptr) };
         Ok(())
     }
 }
@@ -262,10 +215,11 @@ fn test_types() {
     assert_eq!(unreachable.arity(), 1);
 
     let int32 = Type::int32();
-    assert_eq!(format!("{:?}", int32), "Type::int32()");
+    assert_eq!(format!("{:?}", int32), "i32");
 
     let i32_pair = Type::tuple(&[Type::int32(), Type::int32()]);
     assert_eq!(i32_pair.arity(), 2);
+    assert_eq!(format!("{:?}", i32_pair), "(i32 i32)");
     //     pair[0] = pair[1] = none;
 
     let pair_vec = i32_pair.iter().collect::<Vec<_>>();
