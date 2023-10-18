@@ -235,7 +235,7 @@ fn test_types() {
     assert_ne!(float_pair, i32_pair);
 
     let stringref = Type::stringref();
-    assert_eq!(format!("{:?}", stringref), "(i32 i32)");
+    assert_eq!(format!("{:?}", stringref), "stringref");
 
     //     printf("BinaryenPackedTypeNotPacked: %d\n", notPacked);
     //     printf("BinaryenPackedTypeInt8: %d\n", i8);
