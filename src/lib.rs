@@ -24,124 +24,32 @@ impl Drop for Module {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
-struct Type {
+pub struct Type {
     r: BinaryenType,
 }
 
 impl Type {
-    fn none() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeNone() },
-        }
-    }
-    fn int32() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeInt32() },
-        }
-    }
-    fn int64() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeInt64() },
-        }
-    }
-    fn float32() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeFloat32() },
-        }
-    }
-    fn float64() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeFloat64() },
-        }
-    }
-    fn vec128() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeVec128() },
-        }
-    }
-    fn funcref() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeFuncref() },
-        }
-    }
-    fn externref() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeExternref() },
-        }
-    }
-    fn anyref() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeAnyref() },
-        }
-    }
-    fn eqref() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeEqref() },
-        }
-    }
-    fn i31ref() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeI31ref() },
-        }
-    }
-    fn structref() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeStructref() },
-        }
-    }
-    fn arrayref() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeArrayref() },
-        }
-    }
-    fn stringref() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeStringref() },
-        }
-    }
-    fn stringviewWTF8() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeStringviewWTF8() },
-        }
-    }
-    fn stringviewWTF16() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeStringviewWTF16() },
-        }
-    }
-    fn stringview_iter() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeStringviewIter() },
-        }
-    }
-    fn nullref() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeNullref() },
-        }
-    }
-    fn null_externref() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeNullExternref() },
-        }
-    }
-    fn null_funcref() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeNullFuncref() },
-        }
-    }
-    fn unreachable() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeUnreachable() },
-        }
-    }
-
-    /// Not a real type. Used as the last parameter to BinaryenBlock to let
-    /// the API figure out the type instead of providing one.
-    fn auto() -> Self {
-        Self {
-            r: unsafe { BinaryenTypeAuto() },
-        }
-    }
+    pub const NONE: Self = Self {
+        r: wasm_Type_BasicType_none as usize,
+    };
+    pub const UNREACHABLE: Self = Self {
+        r: wasm_Type_BasicType_unreachable as usize,
+    };
+    pub const I32: Self = Self {
+        r: wasm_Type_BasicType_i32_ as usize,
+    };
+    pub const I64: Self = Self {
+        r: wasm_Type_BasicType_i64_ as usize,
+    };
+    pub const F32: Self = Self {
+        r: wasm_Type_BasicType_f32_ as usize,
+    };
+    pub const F64: Self = Self {
+        r: wasm_Type_BasicType_f64_ as usize,
+    };
+    pub const V128: Self = Self {
+        r: wasm_Type_BasicType_v128 as usize,
+    };
 
     fn tuple(types: &[Type]) -> Self {
         Self {
@@ -179,23 +87,7 @@ struct PackedType {
     r: BinaryenPackedType,
 }
 
-impl PackedType {
-    fn not_packed() -> Self {
-        Self {
-            r: unsafe { BinaryenPackedTypeNotPacked() },
-        }
-    }
-    fn int8() -> Self {
-        Self {
-            r: unsafe { BinaryenPackedTypeInt8() },
-        }
-    }
-    fn int16() -> Self {
-        Self {
-            r: unsafe { BinaryenPackedTypeInt16() },
-        }
-    }
-}
+impl PackedType {}
 
 bitflags! {
     #[repr(transparent)]
@@ -227,30 +119,30 @@ bitflags! {
 
 #[test]
 fn test_types() {
-    let none = Type::none();
+    let none = Type::NONE;
     assert_eq!(none.arity(), 0);
 
-    let unreachable = Type::unreachable();
+    let unreachable = Type::UNREACHABLE;
     assert_eq!(unreachable.arity(), 1);
 
-    let int32 = Type::int32();
+    let int32 = Type::I32;
     assert_eq!(format!("{:?}", int32), "i32");
 
-    let i32_pair = Type::tuple(&[Type::int32(), Type::int32()]);
+    let i32_pair = Type::tuple(&[Type::I32, Type::I32]);
     assert_eq!(i32_pair.arity(), 2);
     assert_eq!(format!("{:?}", i32_pair), "(i32 i32)");
     //     pair[0] = pair[1] = none;
 
     let pair_vec = i32_pair.iter().collect::<Vec<_>>();
-    assert_eq!(pair_vec, vec![Type::int32(), Type::int32()]);
+    assert_eq!(pair_vec, vec![Type::I32, Type::I32]);
 
     let duplicate_pair = Type::tuple(&pair_vec);
     assert_eq!(duplicate_pair, i32_pair);
 
-    let float_pair = Type::tuple(&[Type::float32(), Type::float32()]);
+    let float_pair = Type::tuple(&[Type::F32, Type::F32]);
     assert_ne!(float_pair, i32_pair);
 
-    let not_packed = PackedType::not_packed();
+    // let not_packed = PackedType::;
     //     printf("BinaryenPackedTypeNotPacked: %d\n", notPacked);
     //     BinaryenPackedType i8 = BinaryenPackedTypeInt8();
     //     printf("BinaryenPackedTypeInt8: %d\n", i8);
