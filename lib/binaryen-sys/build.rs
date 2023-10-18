@@ -24,6 +24,7 @@ fn main() {
         .header(wasm_header_path.to_str().unwrap())
         .opaque_type("std::.*")
         .allowlist_file(".*binaryen-c.h")
+        .allowlist_type("wasm::FeatureSet::Feature")
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
         .parse_callbacks(Box::new(CargoCallbacks))
