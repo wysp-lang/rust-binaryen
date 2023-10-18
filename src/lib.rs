@@ -1,13 +1,15 @@
 use binaryen_sys::{
-    BinaryenModuleCreate, BinaryenModuleDispose, BinaryenModuleRef, BinaryenType,
-    BinaryenTypeAnyref, BinaryenTypeArity, BinaryenTypeArrayref, BinaryenTypeCreate,
-    BinaryenTypeEqref, BinaryenTypeExternref, BinaryenTypeFloat32, BinaryenTypeFloat64,
-    BinaryenTypeFuncref, BinaryenTypeI31ref, BinaryenTypeInt32, BinaryenTypeInt64,
-    BinaryenTypeNone, BinaryenTypeNullExternref, BinaryenTypeNullFuncref, BinaryenTypeNullref,
-    BinaryenTypeStringref, BinaryenTypeStringviewIter, BinaryenTypeStringviewWTF16,
-    BinaryenTypeStringviewWTF8, BinaryenTypeStructref, BinaryenTypeUnreachable, BinaryenTypeVec128,
+    BinaryenModuleCreate, BinaryenModuleDispose, BinaryenModuleRef, BinaryenPackedType,
+    BinaryenPackedTypeInt16, BinaryenPackedTypeInt8, BinaryenPackedTypeNotPacked, BinaryenType,
+    BinaryenTypeAnyref, BinaryenTypeArity, BinaryenTypeArrayref, BinaryenTypeAuto,
+    BinaryenTypeCreate, BinaryenTypeEqref, BinaryenTypeExpand, BinaryenTypeExternref,
+    BinaryenTypeFloat32, BinaryenTypeFloat64, BinaryenTypeFuncref, BinaryenTypeI31ref,
+    BinaryenTypeInt32, BinaryenTypeInt64, BinaryenTypeNone, BinaryenTypeNullExternref,
+    BinaryenTypeNullFuncref, BinaryenTypeNullref, BinaryenTypeStringref,
+    BinaryenTypeStringviewIter, BinaryenTypeStringviewWTF16, BinaryenTypeStringviewWTF8,
+    BinaryenTypeStructref, BinaryenTypeUnreachable, BinaryenTypeVec128,
 };
-use std::{mem::transmute, ptr::null_mut};
+use std::{fmt::Debug, mem::transmute, ptr::null_mut};
 
 #[repr(transparent)]
 struct Module {
@@ -29,7 +31,7 @@ impl Drop for Module {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 struct Type {
     r: BinaryenType,
@@ -142,6 +144,14 @@ impl Type {
         }
     }
 
+    /// Not a real type. Used as the last parameter to BinaryenBlock to let
+    /// the API figure out the type instead of providing one.
+    fn auto() -> Self {
+        Self {
+            r: unsafe { BinaryenTypeAuto() },
+        }
+    }
+
     fn tuple(types: &[Type]) -> Self {
         Self {
             r: unsafe {
@@ -153,6 +163,94 @@ impl Type {
     fn arity(&self) -> u32 {
         unsafe { BinaryenTypeArity(self.r) }
     }
+
+    fn iter(&self) -> impl Iterator<Item = Type> {
+        let size = self.arity() as usize;
+        let mut slice = (&[Type { r: 0 }]).repeat(size);
+        unsafe { BinaryenTypeExpand(self.r, slice.as_mut_ptr() as *mut usize) };
+        slice.into_iter()
+    }
+}
+
+impl Debug for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self == &Self::none() {
+            write!(f, "Type::none()")?;
+        } else if self == &Self::int32() {
+            write!(f, "Type::int32()")?;
+        } else if self == &Self::int64() {
+            write!(f, "Type::int64()")?;
+        } else if self == &Self::float32() {
+            write!(f, "Type::float32()")?;
+        } else if self == &Self::float64() {
+            write!(f, "Type::float64()")?;
+        } else if self == &Self::vec128() {
+            write!(f, "Type::vec128()")?;
+        } else if self == &Self::funcref() {
+            write!(f, "Type::funcref()")?;
+        } else if self == &Self::externref() {
+            write!(f, "Type::externref()")?;
+        } else if self == &Self::anyref() {
+            write!(f, "Type::anyref()")?;
+        } else if self == &Self::eqref() {
+            write!(f, "Type::eqref()")?;
+        } else if self == &Self::i31ref() {
+            write!(f, "Type::i31ref()")?;
+        } else if self == &Self::structref() {
+            write!(f, "Type::structref()")?;
+        } else if self == &Self::arrayref() {
+            write!(f, "Type::arrayref()")?;
+        } else if self == &Self::stringref() {
+            write!(f, "Type::stringref()")?;
+        } else if self == &Self::stringviewWTF8() {
+            write!(f, "Type::stringviewWTF8()")?;
+        } else if self == &Self::stringviewWTF16() {
+            write!(f, "Type::stringviewWTF16()")?;
+        } else if self == &Self::stringview_iter() {
+            write!(f, "Type::stringview_iter()")?;
+        } else if self == &Self::nullref() {
+            write!(f, "Type::nullref()")?;
+        } else if self == &Self::null_externref() {
+            write!(f, "Type::null_externref()")?;
+        } else if self == &Self::null_funcref() {
+            write!(f, "Type::null_funcref()")?;
+        } else if self == &Self::unreachable() {
+            write!(f, "Type::unreachable()")?;
+        } else {
+            write!(f, "Type::tuple(&[")?;
+            let mut sep = "";
+            for t in self.iter() {
+                write!(f, "{}{:?}", sep, t)?;
+                sep = ", ";
+            }
+            write!(f, "])")?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(transparent)]
+struct PackedType {
+    r: BinaryenPackedType,
+}
+
+impl PackedType {
+    fn not_packed() -> Self {
+        Self {
+            r: unsafe { BinaryenPackedTypeNotPacked() },
+        }
+    }
+    fn int8() -> Self {
+        Self {
+            r: unsafe { BinaryenPackedTypeInt8() },
+        }
+    }
+    fn int16() -> Self {
+        Self {
+            r: unsafe { BinaryenPackedTypeInt16() },
+        }
+    }
 }
 
 #[test]
@@ -162,148 +260,24 @@ fn test_types() {
 
     let unreachable = Type::unreachable();
     assert_eq!(unreachable.arity(), 1);
-    //     (unreachable, &valueType);
-    //     assert(valueType == unreachable);
 
-    //     BinaryenType i32 = BinaryenTypeInt32();
-    //     printf("BinaryenTypeInt32: %zd\n", i32);
-    //     assert(BinaryenTypeArity(i32) == 1);
-    //     BinaryenTypeExpand(i32, &valueType);
-    //     assert(valueType == i32);
+    let int32 = Type::int32();
+    assert_eq!(format!("{:?}", int32), "Type::int32()");
 
-    //     BinaryenType i64 = BinaryenTypeInt64();
-    //     printf("BinaryenTypeInt64: %zd\n", i64);
-    //     assert(BinaryenTypeArity(i64) == 1);
-    //     BinaryenTypeExpand(i64, &valueType);
-    //     assert(valueType == i64);
-
-    //     BinaryenType f32 = BinaryenTypeFloat32();
-    //     printf("BinaryenTypeFloat32: %zd\n", f32);
-    //     assert(BinaryenTypeArity(f32) == 1);
-    //     BinaryenTypeExpand(f32, &valueType);
-    //     assert(valueType == f32);
-
-    //     BinaryenType f64 = BinaryenTypeFloat64();
-    //     printf("BinaryenTypeFloat64: %zd\n", f64);
-    //     assert(BinaryenTypeArity(f64) == 1);
-    //     BinaryenTypeExpand(f64, &valueType);
-    //     assert(valueType == f64);
-
-    //     BinaryenType v128 = BinaryenTypeVec128();
-    //     printf("BinaryenTypeVec128: %zd\n", v128);
-    //     assert(BinaryenTypeArity(v128) == 1);
-    //     BinaryenTypeExpand(v128, &valueType);
-    //     assert(valueType == v128);
-
-    //     BinaryenType funcref = BinaryenTypeFuncref();
-    //     printf("BinaryenTypeFuncref: (ptr)\n");
-    //     assert(funcref == BinaryenTypeFuncref());
-    //     assert(BinaryenTypeArity(funcref) == 1);
-    //     BinaryenTypeExpand(funcref, &valueType);
-    //     assert(valueType == funcref);
-
-    //     BinaryenType externref = BinaryenTypeExternref();
-    //     printf("BinaryenTypeExternref: (ptr)\n");
-    //     assert(externref == BinaryenTypeExternref());
-    //     assert(BinaryenTypeArity(externref) == 1);
-    //     BinaryenTypeExpand(externref, &valueType);
-    //     assert(valueType == externref);
-
-    //     BinaryenType anyref = BinaryenTypeAnyref();
-    //     printf("BinaryenTypeAnyref: (ptr)\n");
-    //     assert(anyref == BinaryenTypeAnyref());
-    //     assert(BinaryenTypeArity(anyref) == 1);
-    //     BinaryenTypeExpand(anyref, &valueType);
-    //     assert(valueType == anyref);
-
-    //     BinaryenType eqref = BinaryenTypeEqref();
-    //     printf("BinaryenTypeEqref: (ptr)\n");
-    //     assert(eqref == BinaryenTypeEqref());
-    //     assert(BinaryenTypeArity(eqref) == 1);
-    //     BinaryenTypeExpand(eqref, &valueType);
-    //     assert(valueType == eqref);
-
-    //     BinaryenType i31ref = BinaryenTypeI31ref();
-    //     printf("BinaryenTypeI31ref: (ptr)\n");
-    //     assert(i31ref == BinaryenTypeI31ref());
-    //     assert(BinaryenTypeArity(i31ref) == 1);
-    //     BinaryenTypeExpand(i31ref, &valueType);
-    //     assert(valueType == i31ref);
-
-    //     BinaryenType structref = BinaryenTypeStructref();
-    //     printf("BinaryenTypeStructref: (ptr)\n");
-    //     assert(structref == BinaryenTypeStructref());
-    //     assert(BinaryenTypeArity(structref) == 1);
-    //     BinaryenTypeExpand(structref, &valueType);
-    //     assert(valueType == structref);
-
-    //     BinaryenType arrayref = BinaryenTypeArrayref();
-    //     printf("BinaryenTypeArrayref: (ptr)\n");
-    //     assert(arrayref == BinaryenTypeArrayref());
-    //     assert(BinaryenTypeArity(arrayref) == 1);
-    //     BinaryenTypeExpand(arrayref, &valueType);
-    //     assert(valueType == arrayref);
-
-    //     BinaryenType stringref = BinaryenTypeStringref();
-    //     printf("BinaryenTypeStringref: (ptr)\n");
-    //     assert(BinaryenTypeArity(stringref) == 1);
-    //     BinaryenTypeExpand(stringref, &valueType);
-    //     assert(valueType == stringref);
-
-    //     BinaryenType stringview_wtf8_ = BinaryenTypeStringviewWTF8();
-    //     printf("BinaryenTypeStringviewWTF8: (ptr)\n");
-    //     assert(BinaryenTypeArity(stringview_wtf8_) == 1);
-    //     BinaryenTypeExpand(stringview_wtf8_, &valueType);
-    //     assert(valueType == stringview_wtf8_);
-
-    //     BinaryenType stringview_wtf16_ = BinaryenTypeStringviewWTF16();
-    //     printf("BinaryenTypeStringviewWTF16: (ptr)\n");
-    //     assert(BinaryenTypeArity(stringview_wtf16_) == 1);
-    //     BinaryenTypeExpand(stringview_wtf16_, &valueType);
-    //     assert(valueType == stringview_wtf16_);
-
-    //     BinaryenType stringview_iter_ = BinaryenTypeStringviewIter();
-    //     printf("BinaryenTypeStringviewIter: (ptr)\n");
-    //     assert(BinaryenTypeArity(stringview_iter_) == 1);
-    //     BinaryenTypeExpand(stringview_iter_, &valueType);
-    //     assert(valueType == stringview_iter_);
-
-    //     BinaryenType nullref = BinaryenTypeNullref();
-    //     printf("BinaryenTypeNullref: (ptr)\n");
-    //     assert(BinaryenTypeArity(nullref) == 1);
-    //     BinaryenTypeExpand(nullref, &valueType);
-    //     assert(valueType == nullref);
-
-    //     BinaryenType nullexternref = BinaryenTypeNullExternref();
-    //     printf("BinaryenTypeNullExternref: (ptr)\n");
-    //     assert(BinaryenTypeArity(nullexternref) == 1);
-    //     BinaryenTypeExpand(nullexternref, &valueType);
-    //     assert(valueType == nullexternref);
-
-    //     BinaryenType nullfuncref = BinaryenTypeNullFuncref();
-    //     printf("BinaryenTypeNullFuncref: (ptr)\n");
-    //     assert(BinaryenTypeArity(nullfuncref) == 1);
-    //     BinaryenTypeExpand(nullfuncref, &valueType);
-    //     assert(valueType == nullfuncref);
-
-    //     printf("BinaryenTypeAuto: %zd\n", BinaryenTypeAuto());
-
-    //     BinaryenType pair[] = {i32, i32};
-
-    //     BinaryenType i32_pair = BinaryenTypeCreate(pair, 2);
-    //     assert(BinaryenTypeArity(i32_pair) == 2);
+    let i32_pair = Type::tuple(&[Type::int32(), Type::int32()]);
+    assert_eq!(i32_pair.arity(), 2);
     //     pair[0] = pair[1] = none;
-    //     BinaryenTypeExpand(i32_pair, pair);
-    //     assert(pair[0] == i32 && pair[1] == i32);
 
-    //     BinaryenType duplicate_pair = BinaryenTypeCreate(pair, 2);
-    //     assert(duplicate_pair == i32_pair);
+    let pair_vec = i32_pair.iter().collect::<Vec<_>>();
+    assert_eq!(pair_vec, vec![Type::int32(), Type::int32()]);
 
-    //     pair[0] = pair[1] = f32;
-    //     BinaryenType float_pair = BinaryenTypeCreate(pair, 2);
-    //     assert(float_pair != i32_pair);
+    let duplicate_pair = Type::tuple(&pair_vec);
+    assert_eq!(duplicate_pair, i32_pair);
 
-    //     BinaryenPackedType notPacked = BinaryenPackedTypeNotPacked();
+    let float_pair = Type::tuple(&[Type::float32(), Type::float32()]);
+    assert_ne!(float_pair, i32_pair);
+
+    let not_packed = PackedType::not_packed();
     //     printf("BinaryenPackedTypeNotPacked: %d\n", notPacked);
     //     BinaryenPackedType i8 = BinaryenPackedTypeInt8();
     //     printf("BinaryenPackedTypeInt8: %d\n", i8);
