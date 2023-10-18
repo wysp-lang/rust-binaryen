@@ -11,13 +11,20 @@ fn main() {
         .generator("Unix Makefiles")
         .build();
 
-    let header_file_path = dst.join("include/binaryen-c.h");
-    let header_file = header_file_path.to_str().unwrap();
+    let src = PathBuf::from("binaryen/src");
+
+    let c_header_path = src.join("binaryen-c.h");
+    let wasm_header_path = src.join("wasm.h");
 
     let bindings = bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
-        .header(header_file)
+        .clang_args(&["-I", src.to_str().unwrap(), "-xc++", "--std=c++17"])
+        .header(c_header_path.to_str().unwrap())
+        .header(wasm_header_path.to_str().unwrap())
+        .opaque_type("std::.*")
+        .allowlist_file(".*binaryen-c.h")
+        .allowlist_type("wasm::FeatureSet::Feature")
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
         .parse_callbacks(Box::new(CargoCallbacks))

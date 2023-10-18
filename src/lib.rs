@@ -1,14 +1,5 @@
-use binaryen_sys::{
-    BinaryenModuleCreate, BinaryenModuleDispose, BinaryenModuleRef, BinaryenPackedType,
-    BinaryenPackedTypeInt16, BinaryenPackedTypeInt8, BinaryenPackedTypeNotPacked,
-    BinaryenStringFree, BinaryenType, BinaryenTypeAnyref, BinaryenTypeArity, BinaryenTypeArrayref,
-    BinaryenTypeAuto, BinaryenTypeCreate, BinaryenTypeEqref, BinaryenTypeExpand,
-    BinaryenTypeExternref, BinaryenTypeFloat32, BinaryenTypeFloat64, BinaryenTypeFuncref,
-    BinaryenTypeI31ref, BinaryenTypeInt32, BinaryenTypeInt64, BinaryenTypeNone,
-    BinaryenTypeNullExternref, BinaryenTypeNullFuncref, BinaryenTypeNullref, BinaryenTypeStringref,
-    BinaryenTypeStringviewIter, BinaryenTypeStringviewWTF16, BinaryenTypeStringviewWTF8,
-    BinaryenTypeStructref, BinaryenTypeToString, BinaryenTypeUnreachable, BinaryenTypeVec128,
-};
+use binaryen_sys::*;
+use bitflags::bitflags;
 use std::{ffi::CStr, fmt::Debug, mem::transmute, ptr::null_mut};
 
 #[repr(transparent)]
@@ -206,6 +197,34 @@ impl PackedType {
     }
 }
 
+bitflags! {
+    #[repr(transparent)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct Features: u32 {
+         const None = wasm_FeatureSet_Feature_None;
+         const Atomics = wasm_FeatureSet_Feature_Atomics;
+         const MutableGlobals = wasm_FeatureSet_Feature_MutableGlobals;
+         const TruncSat = wasm_FeatureSet_Feature_TruncSat;
+         const SIMD = wasm_FeatureSet_Feature_SIMD;
+         const BulkMemory = wasm_FeatureSet_Feature_BulkMemory;
+         const SignExt = wasm_FeatureSet_Feature_SignExt;
+         const ExceptionHandling = wasm_FeatureSet_Feature_ExceptionHandling;
+         const TailCall = wasm_FeatureSet_Feature_TailCall;
+         const ReferenceTypes = wasm_FeatureSet_Feature_ReferenceTypes;
+         const Multivalue = wasm_FeatureSet_Feature_Multivalue;
+         const GC = wasm_FeatureSet_Feature_GC;
+         const Memory64 = wasm_FeatureSet_Feature_Memory64;
+         const RelaxedSIMD = wasm_FeatureSet_Feature_RelaxedSIMD;
+         const ExtendedConst = wasm_FeatureSet_Feature_ExtendedConst;
+         const Strings = wasm_FeatureSet_Feature_Strings;
+         const MultiMemory = wasm_FeatureSet_Feature_MultiMemory;
+         const TypedContinuations = wasm_FeatureSet_Feature_TypedContinuations;
+         const MVP = wasm_FeatureSet_Feature_MVP;
+         const Default = wasm_FeatureSet_Feature_Default;
+         const All = wasm_FeatureSet_Feature_All;
+    }
+}
+
 #[test]
 fn test_types() {
     let none = Type::none();
@@ -270,4 +289,12 @@ fn test_types() {
     //     assert(ref_eq != ref_null_eq);
     //     assert(BinaryenTypeGetHeapType(ref_eq) == eq);
     //     assert(!BinaryenTypeIsNullable(ref_eq));
+}
+
+#[test]
+fn test_features() {
+    assert_eq!(
+        Features::Default,
+        Features::SignExt | Features::MutableGlobals
+    );
 }

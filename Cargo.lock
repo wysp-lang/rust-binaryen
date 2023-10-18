@@ -401,4 +401,5 @@ name = "wysp-binaryen"
 version = "0.1.0"
 dependencies = [
  "binaryen-sys",
+ "bitflags",
 ]
