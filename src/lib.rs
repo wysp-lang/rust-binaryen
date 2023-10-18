@@ -1,14 +1,15 @@
 use binaryen_sys::*;
+pub use binaryen_sys::{self as ffi};
 use bitflags::bitflags;
 use std::{ffi::CStr, fmt::Debug, mem::transmute, ptr::null_mut};
 
 #[repr(transparent)]
-struct Module {
+pub struct Module {
     r: BinaryenModuleRef,
 }
 
 impl Module {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             r: unsafe { BinaryenModuleCreate() },
         }
@@ -51,7 +52,7 @@ impl Type {
         r: wasm_Type_BasicType_v128 as usize,
     };
 
-    fn tuple(types: &[Type]) -> Self {
+    pub fn tuple(types: &[Type]) -> Self {
         Self {
             r: unsafe {
                 BinaryenTypeCreate(transmute(types.as_ptr()), types.len().try_into().unwrap())
@@ -59,11 +60,11 @@ impl Type {
         }
     }
 
-    fn arity(&self) -> u32 {
+    pub fn arity(&self) -> u32 {
         unsafe { BinaryenTypeArity(self.r) }
     }
 
-    fn iter(&self) -> impl Iterator<Item = Type> {
+    pub fn iter(&self) -> impl Iterator<Item = Type> {
         let size = self.arity() as usize;
         let mut slice = (&[Type { r: 0 }]).repeat(size);
         unsafe { BinaryenTypeExpand(self.r, slice.as_mut_ptr() as *mut usize) };
@@ -82,12 +83,11 @@ impl Debug for Type {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[repr(transparent)]
-struct PackedType {
-    r: BinaryenPackedType,
+enum PackedType {
+    NotPacked = wasm_Field_PackedType_not_packed as isize,
+    I8 = wasm_Field_PackedType_i8_ as isize,
+    I16 = wasm_Field_PackedType_i16_ as isize,
 }
-
-impl PackedType {}
 
 bitflags! {
     #[repr(transparent)]
@@ -144,7 +144,6 @@ fn test_types() {
 
     // let not_packed = PackedType::;
     //     printf("BinaryenPackedTypeNotPacked: %d\n", notPacked);
-    //     BinaryenPackedType i8 = BinaryenPackedTypeInt8();
     //     printf("BinaryenPackedTypeInt8: %d\n", i8);
     //     BinaryenPackedType i16 = BinaryenPackedTypeInt16();
     //     printf("BinaryenPackedTypeInt16: %d\n", i16);
