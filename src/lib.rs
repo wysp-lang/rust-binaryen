@@ -174,6 +174,110 @@ impl Debug for Type {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+struct HeapType {
+    id: BinaryenHeapType,
+}
+impl HeapType {
+    fn ext() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeExt() },
+        }
+    }
+    fn func() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeFunc() },
+        }
+    }
+    fn any() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeAny() },
+        }
+    }
+    fn eq() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeEq() },
+        }
+    }
+    fn i31() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeI31() },
+        }
+    }
+    fn struct_() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeStruct() },
+        }
+    }
+    fn array() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeArray() },
+        }
+    }
+    fn string() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeString() },
+        }
+    }
+    fn stringview_wtf8() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeStringviewWTF8() },
+        }
+    }
+    fn stringview_wtf16() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeStringviewWTF16() },
+        }
+    }
+    fn stringview_iter() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeStringviewIter() },
+        }
+    }
+    fn none() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeNone() },
+        }
+    }
+    fn noext() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeNoext() },
+        }
+    }
+    fn nofunc() -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeNofunc() },
+        }
+    }
+
+    fn is_basic(&self) -> bool {
+        unsafe { BinaryenHeapTypeIsBasic(self.id) }
+    }
+    fn is_signature(&self) -> bool {
+        unsafe { BinaryenHeapTypeIsSignature(self.id) }
+    }
+    fn is_struct(&self) -> bool {
+        unsafe { BinaryenHeapTypeIsStruct(self.id) }
+    }
+    fn is_array(&self) -> bool {
+        unsafe { BinaryenHeapTypeIsArray(self.id) }
+    }
+    fn is_bottom(&self) -> bool {
+        unsafe { BinaryenHeapTypeIsBottom(self.id) }
+    }
+}
+
+impl Debug for HeapType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let ptr = unsafe { BinaryenHeapTypeToString(self.id) };
+        let c_str = unsafe { CStr::from_ptr(ptr) };
+        write!(f, "{}", c_str.to_str().map_err(|_| std::fmt::Error)?)?;
+        unsafe { BinaryenStringFree(ptr) };
+        Ok(())
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum PackedType {
     NotPacked = wasm_Field_PackedType_not_packed as isize,
