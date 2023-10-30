@@ -25,7 +25,8 @@
           devShells.default = mkShell {
             LIBCLANG_PATH = "${llvmPackages.libclang.lib}/lib";
             buildInputs = [
-              # clang
+              clang
+              llvmPackages.libclang.lib
               cmake
               (rust-bin.nightly.latest.default.override {
                 extensions = ["rust-src"];
