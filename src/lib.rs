@@ -1,7 +1,7 @@
 use binaryen_sys::*;
 pub use binaryen_sys::{self as ffi};
 use bitflags::bitflags;
-use std::{ffi::CStr, fmt::Debug, mem::transmute, ptr::null_mut};
+use std::{ffi::{CStr, CString}, fmt::Debug, mem::transmute, ptr::null_mut};
 
 #[repr(transparent)]
 pub struct Module {
@@ -12,6 +12,12 @@ impl Module {
     pub fn new() -> Self {
         Self {
             r: unsafe { BinaryenModuleCreate() },
+        }
+    }
+
+    pub fn binaryen_const(&mut self, value: Literal) -> BinaryenExpressionRef {
+        unsafe{
+            BinaryenConst(self.r, value.to_c_type())
         }
     }
 }
@@ -313,6 +319,40 @@ bitflags! {
     }
 }
 
+pub enum Literal{
+    I32(i32),
+    I64(i64),
+    F32(f32),
+    F64(f64),
+    V128([u8; 16]),
+    Func(String),
+}
+
+impl Literal {
+    fn to_c_type(&self) -> BinaryenLiteral{
+        match self {
+            Literal::I32(x) => BinaryenLiteral { type_: 2, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
+                i32_: *x,
+            } },
+            Literal::I64(x) => BinaryenLiteral { type_: 3, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
+                i64_: *x,
+            } },
+            Literal::F32(x) => BinaryenLiteral { type_: 4, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
+                f32_: *x,
+            } },
+            Literal::F64(x) => BinaryenLiteral { type_: 5, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
+                f64_: *x,
+            } },
+            Literal::V128(x) => BinaryenLiteral { type_: 6, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
+                v128: *x,
+            } },
+            Literal::Func(x) => BinaryenLiteral { type_: 0, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
+                func: CString::new(x.as_str()).unwrap().as_ptr(),
+            } },
+        }
+    }
+}
+
 #[test]
 fn test_types() {
     let none = Type::none();
@@ -386,4 +426,16 @@ fn test_features() {
         Features::Default,
         Features::SignExt | Features::MutableGlobals
     );
+}
+
+#[test]
+fn test_core() {
+
+    // Module creation
+
+    let mut module = Module::new();
+
+    // Literals and Consts
+
+    let constI32 = module.binaryen_const(Literal::I32(1));
 }
