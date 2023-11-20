@@ -1,7 +1,12 @@
 use binaryen_sys::*;
 pub use binaryen_sys::{self as ffi};
 use bitflags::bitflags;
-use std::{ffi::{CStr, CString}, fmt::Debug, mem::transmute, ptr::null_mut};
+use std::{
+    ffi::{CStr, CString},
+    fmt::Debug,
+    mem::transmute,
+    ptr::null_mut,
+};
 
 #[repr(transparent)]
 pub struct Module {
@@ -16,9 +21,7 @@ impl Module {
     }
 
     pub fn binaryen_const(&mut self, value: Literal) -> BinaryenExpressionRef {
-        unsafe{
-            BinaryenConst(self.r, value.to_c_type())
-        }
+        unsafe { BinaryenConst(self.r, value.to_c_type()) }
     }
 }
 
@@ -31,112 +34,112 @@ impl Drop for Module {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
-struct Type {
+pub struct Type {
     id: BinaryenType,
 }
 
 impl Type {
-    fn none() -> Self {
+    pub fn none() -> Self {
         Self {
             id: unsafe { BinaryenTypeNone() },
         }
     }
-    fn int32() -> Self {
+    pub fn int32() -> Self {
         Self {
             id: unsafe { BinaryenTypeInt32() },
         }
     }
-    fn int64() -> Self {
+    pub fn int64() -> Self {
         Self {
             id: unsafe { BinaryenTypeInt64() },
         }
     }
-    fn float32() -> Self {
+    pub fn float32() -> Self {
         Self {
             id: unsafe { BinaryenTypeFloat32() },
         }
     }
-    fn float64() -> Self {
+    pub fn float64() -> Self {
         Self {
             id: unsafe { BinaryenTypeFloat64() },
         }
     }
-    fn vec128() -> Self {
+    pub fn vec128() -> Self {
         Self {
             id: unsafe { BinaryenTypeVec128() },
         }
     }
-    fn funcref() -> Self {
+    pub fn funcref() -> Self {
         Self {
             id: unsafe { BinaryenTypeFuncref() },
         }
     }
-    fn externref() -> Self {
+    pub fn externref() -> Self {
         Self {
             id: unsafe { BinaryenTypeExternref() },
         }
     }
-    fn anyref() -> Self {
+    pub fn anyref() -> Self {
         Self {
             id: unsafe { BinaryenTypeAnyref() },
         }
     }
-    fn eqref() -> Self {
+    pub fn eqref() -> Self {
         Self {
             id: unsafe { BinaryenTypeEqref() },
         }
     }
-    fn i31ref() -> Self {
+    pub fn i31ref() -> Self {
         Self {
             id: unsafe { BinaryenTypeI31ref() },
         }
     }
-    fn structref() -> Self {
+    pub fn structref() -> Self {
         Self {
             id: unsafe { BinaryenTypeStructref() },
         }
     }
-    fn arrayref() -> Self {
+    pub fn arrayref() -> Self {
         Self {
             id: unsafe { BinaryenTypeArrayref() },
         }
     }
-    fn stringref() -> Self {
+    pub fn stringref() -> Self {
         Self {
             id: unsafe { BinaryenTypeStringref() },
         }
     }
-    fn stringview_wtf8() -> Self {
+    pub fn stringview_wtf8() -> Self {
         Self {
             id: unsafe { BinaryenTypeStringviewWTF8() },
         }
     }
-    fn stringview_wtf16() -> Self {
+    pub fn stringview_wtf16() -> Self {
         Self {
             id: unsafe { BinaryenTypeStringviewWTF16() },
         }
     }
-    fn stringview_iter() -> Self {
+    pub fn stringview_iter() -> Self {
         Self {
             id: unsafe { BinaryenTypeStringviewIter() },
         }
     }
-    fn nullref() -> Self {
+    pub fn nullref() -> Self {
         Self {
             id: unsafe { BinaryenTypeNullref() },
         }
     }
-    fn null_externref() -> Self {
+    pub fn null_externref() -> Self {
         Self {
             id: unsafe { BinaryenTypeNullExternref() },
         }
     }
-    fn null_funcref() -> Self {
+    pub fn null_funcref() -> Self {
         Self {
             id: unsafe { BinaryenTypeNullFuncref() },
         }
     }
-    fn unreachable() -> Self {
+    pub fn unreachable() -> Self {
         Self {
             id: unsafe { BinaryenTypeUnreachable() },
         }
@@ -144,7 +147,7 @@ impl Type {
 
     /// Not a real type. Used as the last parameter to BinaryenBlock to let
     /// the API figure out the type instead of providing one.
-    fn auto() -> Self {
+    pub fn auto() -> Self {
         Self {
             id: unsafe { BinaryenTypeAuto() },
         }
@@ -168,6 +171,20 @@ impl Type {
         unsafe { BinaryenTypeExpand(self.id, slice.as_mut_ptr() as *mut usize) };
         slice.into_iter()
     }
+
+    pub fn get_heap_type(&self) -> HeapType {
+        HeapType {
+            id: unsafe { BinaryenTypeGetHeapType(self.id) },
+        }
+    }
+
+    pub fn from_heap_type(heap_type: &HeapType, nullable: bool) -> Self {
+        heap_type.get_type(nullable)
+    }
+
+    pub fn is_nullable(&self) -> bool {
+        unsafe { BinaryenTypeIsNullable(self.id) }
+    }
 }
 
 impl Debug for Type {
@@ -182,95 +199,111 @@ impl Debug for Type {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
-struct HeapType {
+pub struct HeapType {
     id: BinaryenHeapType,
 }
 impl HeapType {
-    fn ext() -> Self {
+    pub fn ext() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeExt() },
         }
     }
-    fn func() -> Self {
+    pub fn func() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeFunc() },
         }
     }
-    fn any() -> Self {
+    pub fn any() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeAny() },
         }
     }
-    fn eq() -> Self {
+    pub fn eq() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeEq() },
         }
     }
-    fn i31() -> Self {
+    pub fn i31() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeI31() },
         }
     }
-    fn struct_() -> Self {
+    pub fn struct_() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeStruct() },
         }
     }
-    fn array() -> Self {
+    pub fn array() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeArray() },
         }
     }
-    fn string() -> Self {
+    pub fn string() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeString() },
         }
     }
-    fn stringview_wtf8() -> Self {
+    pub fn stringview_wtf8() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeStringviewWTF8() },
         }
     }
-    fn stringview_wtf16() -> Self {
+    pub fn stringview_wtf16() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeStringviewWTF16() },
         }
     }
-    fn stringview_iter() -> Self {
+    pub fn stringview_iter() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeStringviewIter() },
         }
     }
-    fn none() -> Self {
+    pub fn none() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeNone() },
         }
     }
-    fn noext() -> Self {
+    pub fn noext() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeNoext() },
         }
     }
-    fn nofunc() -> Self {
+    pub fn nofunc() -> Self {
         Self {
             id: unsafe { BinaryenHeapTypeNofunc() },
         }
     }
 
-    fn is_basic(&self) -> bool {
+    pub fn is_basic(&self) -> bool {
         unsafe { BinaryenHeapTypeIsBasic(self.id) }
     }
-    fn is_signature(&self) -> bool {
+    pub fn is_signature(&self) -> bool {
         unsafe { BinaryenHeapTypeIsSignature(self.id) }
     }
-    fn is_struct(&self) -> bool {
+    pub fn is_struct(&self) -> bool {
         unsafe { BinaryenHeapTypeIsStruct(self.id) }
     }
-    fn is_array(&self) -> bool {
+    pub fn is_array(&self) -> bool {
         unsafe { BinaryenHeapTypeIsArray(self.id) }
     }
-    fn is_bottom(&self) -> bool {
+    pub fn is_bottom(&self) -> bool {
         unsafe { BinaryenHeapTypeIsBottom(self.id) }
+    }
+
+    pub fn get_bottom(&self) -> Self {
+        Self {
+            id: unsafe { BinaryenHeapTypeGetBottom(self.id) },
+        }
+    }
+
+    pub fn from_type(typ: &Type) -> Self {
+        typ.get_heap_type()
+    }
+
+    pub fn get_type(&self, nullable: bool) -> Type {
+        Type {
+            id: unsafe { BinaryenTypeFromHeapType(self.id, nullable) },
+        }
     }
 }
 
@@ -285,7 +318,7 @@ impl Debug for HeapType {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum PackedType {
+pub enum PackedType {
     NotPacked = wasm_Field_PackedType_not_packed as isize,
     I8 = wasm_Field_PackedType_i8_ as isize,
     I16 = wasm_Field_PackedType_i16_ as isize,
@@ -319,7 +352,7 @@ bitflags! {
     }
 }
 
-pub enum Literal{
+pub enum Literal {
     I32(i32),
     I64(i64),
     F32(f32),
@@ -329,26 +362,34 @@ pub enum Literal{
 }
 
 impl Literal {
-    fn to_c_type(&self) -> BinaryenLiteral{
+    fn to_c_type(&self) -> BinaryenLiteral {
         match self {
-            Literal::I32(x) => BinaryenLiteral { type_: 2, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
-                i32_: *x,
-            } },
-            Literal::I64(x) => BinaryenLiteral { type_: 3, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
-                i64_: *x,
-            } },
-            Literal::F32(x) => BinaryenLiteral { type_: 4, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
-                f32_: *x,
-            } },
-            Literal::F64(x) => BinaryenLiteral { type_: 5, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
-                f64_: *x,
-            } },
-            Literal::V128(x) => BinaryenLiteral { type_: 6, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
-                v128: *x,
-            } },
-            Literal::Func(x) => BinaryenLiteral { type_: 0, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
-                func: CString::new(x.as_str()).unwrap().as_ptr(),
-            } },
+            Literal::I32(x) => BinaryenLiteral {
+                type_: 2,
+                __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1 { i32_: *x },
+            },
+            Literal::I64(x) => BinaryenLiteral {
+                type_: 3,
+                __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1 { i64_: *x },
+            },
+            Literal::F32(x) => BinaryenLiteral {
+                type_: 4,
+                __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1 { f32_: *x },
+            },
+            Literal::F64(x) => BinaryenLiteral {
+                type_: 5,
+                __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1 { f64_: *x },
+            },
+            Literal::V128(x) => BinaryenLiteral {
+                type_: 6,
+                __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1 { v128: *x },
+            },
+            Literal::Func(x) => BinaryenLiteral {
+                type_: 0,
+                __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1 {
+                    func: CString::new(x.as_str()).unwrap().as_ptr(),
+                },
+            },
         }
     }
 }
@@ -381,43 +422,19 @@ fn test_types() {
     let stringref = Type::stringref();
     assert_eq!(format!("{:?}", stringref), "stringref");
 
-    //     printf("BinaryenPackedTypeNotPacked: %d\n", notPacked);
-    //     printf("BinaryenPackedTypeInt8: %d\n", i8);
-    //     BinaryenPackedType i16 = BinaryenPackedTypeInt16();
-    //     printf("BinaryenPackedTypeInt16: %d\n", i16);
+    assert_eq!(HeapType::ext().is_bottom(), false);
+    assert_eq!(HeapType::noext().is_bottom(), true);
+    assert_eq!(HeapType::ext().get_bottom(), HeapType::noext());
 
-    //     printf("BinaryenHeapTypeExt: %zd\n", BinaryenHeapTypeExt());
-    //     printf("BinaryenHeapTypeFunc: %zd\n", BinaryenHeapTypeFunc());
-    //     printf("BinaryenHeapTypeAny: %zd\n", BinaryenHeapTypeAny());
-    //     printf("BinaryenHeapTypeEq: %zd\n", BinaryenHeapTypeEq());
-    //     printf("BinaryenHeapTypeI31: %zd\n", BinaryenHeapTypeI31());
-    //     printf("BinaryenHeapTypeStruct: %zd\n", BinaryenHeapTypeStruct());
-    //     printf("BinaryenHeapTypeArray: %zd\n", BinaryenHeapTypeArray());
-    //     printf("BinaryenHeapTypeString: %zd\n", BinaryenHeapTypeString());
-    //     printf("BinaryenHeapTypeStringviewWTF8: %zd\n",
-    //            BinaryenHeapTypeStringviewWTF8());
-    //     printf("BinaryenHeapTypeStringviewWTF16: %zd\n",
-    //            BinaryenHeapTypeStringviewWTF16());
-    //     printf("BinaryenHeapTypeStringviewIter: %zd\n",
-    //            BinaryenHeapTypeStringviewIter());
-    //     printf("BinaryenHeapTypeNone: %zd\n", BinaryenHeapTypeNone());
-    //     printf("BinaryenHeapTypeNoext: %zd\n", BinaryenHeapTypeNoext());
-    //     printf("BinaryenHeapTypeNofunc: %zd\n", BinaryenHeapTypeNofunc());
-
-    //     assert(!BinaryenHeapTypeIsBottom(BinaryenHeapTypeExt()));
-    //     assert(BinaryenHeapTypeIsBottom(BinaryenHeapTypeNoext()));
-    //     assert(BinaryenHeapTypeGetBottom(BinaryenHeapTypeExt()) ==
-    //            BinaryenHeapTypeNoext());
-
-    //     BinaryenHeapType eq = BinaryenTypeGetHeapType(eqref);
-    //     assert(eq == BinaryenHeapTypeEq());
-    //     BinaryenType ref_null_eq = BinaryenTypeFromHeapType(eq, true);
-    //     assert(BinaryenTypeGetHeapType(ref_null_eq) == eq);
-    //     assert(BinaryenTypeIsNullable(ref_null_eq));
-    //     BinaryenType ref_eq = BinaryenTypeFromHeapType(eq, false);
-    //     assert(ref_eq != ref_null_eq);
-    //     assert(BinaryenTypeGetHeapType(ref_eq) == eq);
-    //     assert(!BinaryenTypeIsNullable(ref_eq));
+    let eq = Type::eqref().get_heap_type();
+    assert_eq!(eq, HeapType::eq());
+    let ref_null_eq = Type::from_heap_type(&eq, true);
+    assert_eq!(ref_null_eq.get_heap_type(), eq);
+    assert!(ref_null_eq.is_nullable());
+    let ref_eq = eq.get_type(false);
+    assert_ne!(ref_eq, ref_null_eq);
+    assert_eq!(HeapType::from_type(&ref_eq), eq);
+    assert!(!ref_eq.is_nullable());
 }
 
 #[test]
@@ -430,7 +447,6 @@ fn test_features() {
 
 #[test]
 fn test_core() {
-
     // Module creation
 
     let mut module = Module::new();
