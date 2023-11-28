@@ -70,6 +70,18 @@ impl Module {
         unsafe { BinaryenStringFree(result.binary as *mut i8) };
         vec
     }
+
+    pub fn add_function_export(&self, internal_name: &str, external_name: &str) {
+        let internal_name = CString::new(internal_name).expect("null error");
+        let external_name = CString::new(external_name).expect("null error");
+        let _export = unsafe {
+            BinaryenAddFunctionExport(
+                self.r,
+                internal_name.as_ptr() as *const i8,
+                external_name.as_ptr() as *const i8,
+            )
+        };
+    }
 }
 
 impl Debug for Module {
@@ -776,16 +788,18 @@ fn hello_world() {
     let function = module.add_function("adder", params, results, &[], add);
     assert_eq!(function.name(), "adder");
 
-    assert_eq!(format!("{:?}", module), "(module\n (type $0 (func (param i32 i32) (result i32)))\n (func $adder (param $0 i32) (param $1 i32) (result i32)\n  (i32.add\n   (local.get $0)\n   (local.get $1)\n  )\n )\n)\n");
+    module.add_function_export("adder", "the_adder");
+
+    assert_eq!(format!("{:?}", module), "(module\n (type $0 (func (param i32 i32) (result i32)))\n (export \"the_adder\" (func $adder))\n (func $adder (param $0 i32) (param $1 i32) (result i32)\n  (i32.add\n   (local.get $0)\n   (local.get $1)\n  )\n )\n)\n");
 
     assert_eq!(
         module.compile(),
         vec![
-            0, 97, 115, 109, 1, 0, 0, 0, 1, 7, 1, 96, 2, 127, 127, 1, 127, 3, 2, 1, 0, 10, 9, 1, 7,
-            0, 32, 0, 32, 1, 106, 11
+            0, 97, 115, 109, 1, 0, 0, 0, 1, 7, 1, 96, 2, 127, 127, 1, 127, 3, 2, 1, 0, 7, 13, 1, 9,
+            116, 104, 101, 95, 97, 100, 100, 101, 114, 0, 0, 10, 9, 1, 7, 0, 32, 0, 32, 1, 106, 11
         ]
     );
 
-    let mut file = File::create("test.wasm").unwrap();
+    let mut file = File::create("hello_world.wasm").unwrap();
     file.write_all(&module.compile()).unwrap();
 }
