@@ -1,7 +1,12 @@
 use binaryen_sys::*;
 pub use binaryen_sys::{self as ffi};
 use bitflags::bitflags;
-use std::{ffi::{CStr, CString}, fmt::Debug, mem::transmute, ptr::null_mut};
+use std::{
+    ffi::{CStr, CString},
+    fmt::Debug,
+    mem::transmute,
+    ptr::null_mut,
+};
 
 #[repr(transparent)]
 pub struct Module {
@@ -16,11 +21,14 @@ impl Module {
     }
 
     pub fn binaryen_const(&mut self, value: Literal) -> BinaryenExpressionRef {
-        unsafe{
-            BinaryenConst(self.r, value.to_c_type())
-        }
+        unsafe { BinaryenConst(self.r, value.to_c_type()) }
+    }
+
+    pub fn local_get(& self, index: u32, typ: Type) -> BinaryenExpressionRef {
+        unsafe{BinaryenLocalGet(self.r, index, typ.id)}
     }
 }
+
 
 impl Drop for Module {
     fn drop(&mut self) {
@@ -319,36 +327,37 @@ bitflags! {
     }
 }
 
-pub enum Literal{
+pub enum Literal {
     I32(i32),
     I64(i64),
     F32(f32),
     F64(f64),
     V128([u8; 16]),
-    Func(String),
 }
 
 impl Literal {
-    fn to_c_type(&self) -> BinaryenLiteral{
+    fn to_c_type(&self) -> BinaryenLiteral {
         match self {
-            Literal::I32(x) => BinaryenLiteral { type_: 2, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
-                i32_: *x,
-            } },
-            Literal::I64(x) => BinaryenLiteral { type_: 3, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
-                i64_: *x,
-            } },
-            Literal::F32(x) => BinaryenLiteral { type_: 4, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
-                f32_: *x,
-            } },
-            Literal::F64(x) => BinaryenLiteral { type_: 5, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
-                f64_: *x,
-            } },
-            Literal::V128(x) => BinaryenLiteral { type_: 6, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
-                v128: *x,
-            } },
-            Literal::Func(x) => BinaryenLiteral { type_: 0, __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1{
-                func: CString::new(x.as_str()).unwrap().as_ptr(),
-            } },
+            Literal::I32(x) => BinaryenLiteral {
+                type_: 2,
+                __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1 { i32_: *x },
+            },
+            Literal::I64(x) => BinaryenLiteral {
+                type_: 3,
+                __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1 { i64_: *x },
+            },
+            Literal::F32(x) => BinaryenLiteral {
+                type_: 4,
+                __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1 { f32_: *x },
+            },
+            Literal::F64(x) => BinaryenLiteral {
+                type_: 5,
+                __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1 { f64_: *x },
+            },
+            Literal::V128(x) => BinaryenLiteral {
+                type_: 6,
+                __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1 { v128: *x },
+            },
         }
     }
 }
@@ -430,7 +439,6 @@ fn test_features() {
 
 #[test]
 fn test_core() {
-
     // Module creation
 
     let mut module = Module::new();
@@ -438,4 +446,16 @@ fn test_core() {
     // Literals and Consts
 
     let constI32 = module.binaryen_const(Literal::I32(1));
+}
+
+#[test]
+fn hello_world() {
+    let mut module = Module::new();
+    let ii: [Type; 2] = [Type::int32(), Type::int32()];
+
+    let params = Type::tuple(&ii);
+
+    let results = Type::int32();
+
+    
 }
