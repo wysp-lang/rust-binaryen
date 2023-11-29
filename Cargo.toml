@@ -1,5 +1,5 @@
 [package]
-name = "wysp-binaryen"
+name = "rust-binaryen"
 version = "0.1.0"
 edition = "2021"
 
