@@ -637,10 +637,11 @@ impl Debug for HeapType {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(u32)]
 pub enum PackedType {
-    NotPacked = wasm_Field_PackedType_not_packed as isize,
-    I8 = wasm_Field_PackedType_i8_ as isize,
-    I16 = wasm_Field_PackedType_i16_ as isize,
+    NotPacked = wasm_Field_PackedType_not_packed,
+    I8 = wasm_Field_PackedType_i8_,
+    I16 = wasm_Field_PackedType_i16_,
 }
 
 bitflags! {
@@ -702,6 +703,58 @@ impl Literal {
                 type_: 6,
                 __bindgen_anon_1: BinaryenLiteral__bindgen_ty_1 { v128: *x },
             },
+        }
+    }
+}
+
+pub struct TypeBuilder {
+    r: TypeBuilderRef,
+}
+
+impl TypeBuilder {
+    fn new(size: u32) -> Self {
+        TypeBuilder {
+            r: unsafe { TypeBuilderCreate(size) },
+        }
+    }
+
+    fn get_size(&self) -> u32 {
+        unsafe { TypeBuilderGetSize(self.r) }
+    }
+
+    fn set_struct_type(
+        &mut self,
+        index: u32,
+        field_types: &mut [Type],
+        field_packed_types: &mut [PackedType],
+        field_mutables: &mut [bool],
+    ) {
+        assert!(
+            field_mutables.len() == field_types.len() && field_mutables.len() == field_types.len()
+        );
+        unsafe {
+            TypeBuilderSetStructType(
+                self.r,
+                index,
+                field_types.as_mut_ptr() as *mut BinaryenType, // Type is repr(transparent) for BinaryenType
+                field_packed_types.as_mut_ptr() as *mut BinaryenPackedType, // PackedType is repr(u32) and BinaryenPackedType is u32
+                field_mutables.as_mut_ptr(),
+                field_mutables.len() as i32,
+            )
+        }
+    }
+
+    // consumes self, because the builder is deleted
+    fn build(self) -> Result<Vec<HeapType>, (BinaryenIndex, TypeBuilderErrorReason)>{
+        let mut error_index: BinaryenIndex = 0;
+        let mut error_reason: TypeBuilderErrorReason = 0;
+        let mut heap_types: Vec<HeapType> = Vec::new();
+        heap_types.resize(self.get_size() as usize, HeapType { id: 0 });
+        let x = unsafe { TypeBuilderBuildAndDispose(self.r, heap_types.as_mut_ptr() as *mut usize, &mut error_index, &mut error_reason) };
+        if x {
+            Ok(heap_types)
+        }else{
+            Err((error_index, error_reason))
         }
     }
 }
