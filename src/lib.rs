@@ -712,48 +712,57 @@ pub struct TypeBuilder {
 }
 
 impl TypeBuilder {
-    fn new(size: u32) -> Self {
+    pub fn new(size: u32) -> Self {
         TypeBuilder {
             r: unsafe { TypeBuilderCreate(size) },
         }
     }
 
-    fn get_size(&self) -> u32 {
+    pub fn get_size(&self) -> u32 {
         unsafe { TypeBuilderGetSize(self.r) }
     }
 
-    fn set_struct_type(
+    pub fn set_struct_type(
         &mut self,
         index: u32,
-        field_types: &mut [Type],
-        field_packed_types: &mut [PackedType],
-        field_mutables: &mut [bool],
+        field_types: &[Type],
+        field_packed_types: &[PackedType],
+        field_mutables: &[bool],
     ) {
         assert!(
-            field_mutables.len() == field_types.len() && field_mutables.len() == field_types.len()
+            index < self.get_size()
+                && field_mutables.len() == field_types.len()
+                && field_mutables.len() == field_types.len()
         );
         unsafe {
             TypeBuilderSetStructType(
                 self.r,
                 index,
-                field_types.as_mut_ptr() as *mut BinaryenType, // Type is repr(transparent) for BinaryenType
-                field_packed_types.as_mut_ptr() as *mut BinaryenPackedType, // PackedType is repr(u32) and BinaryenPackedType is u32
-                field_mutables.as_mut_ptr(),
+                field_types.as_ptr() as *mut BinaryenType, // Type is repr(transparent) for BinaryenType
+                field_packed_types.as_ptr() as *mut BinaryenPackedType, // PackedType is repr(u32) and BinaryenPackedType is u32
+                field_mutables.as_ptr() as *mut bool,
                 field_mutables.len() as i32,
             )
         }
     }
 
     // consumes self, because the builder is deleted
-    fn build(self) -> Result<Vec<HeapType>, (BinaryenIndex, TypeBuilderErrorReason)>{
+    pub fn build(self) -> Result<Vec<HeapType>, (BinaryenIndex, TypeBuilderErrorReason)> {
         let mut error_index: BinaryenIndex = 0;
         let mut error_reason: TypeBuilderErrorReason = 0;
         let mut heap_types: Vec<HeapType> = Vec::new();
         heap_types.resize(self.get_size() as usize, HeapType { id: 0 });
-        let x = unsafe { TypeBuilderBuildAndDispose(self.r, heap_types.as_mut_ptr() as *mut usize, &mut error_index, &mut error_reason) };
+        let x = unsafe {
+            TypeBuilderBuildAndDispose(
+                self.r,
+                heap_types.as_mut_ptr() as *mut usize,
+                &mut error_index,
+                &mut error_reason,
+            )
+        };
         if x {
             Ok(heap_types)
-        }else{
+        } else {
             Err((error_index, error_reason))
         }
     }

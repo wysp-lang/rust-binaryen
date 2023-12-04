@@ -28,10 +28,10 @@
               clang
               llvmPackages.libclang.lib
               cmake
-              # (rust-bin.nightly.latest.default.override {
-              #   extensions = ["rust-src"];
-              #   targets = ["wasm32-unknown-unknown"];
-              # })
+              (rust-bin.nightly.latest.default.override {
+                extensions = ["rust-src"];
+                targets = ["wasm32-unknown-unknown"];
+              })
               rust-bin.nightly.latest.default
             ];
           };
