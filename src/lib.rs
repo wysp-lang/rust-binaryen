@@ -1,3 +1,6 @@
+mod type_builder;
+mod types;
+
 use binaryen_sys::*;
 pub use binaryen_sys::{self as ffi};
 use bitflags::bitflags;
@@ -9,8 +12,7 @@ use std::{
     ptr::{null_mut, slice_from_raw_parts},
 };
 
-use crate::types::Type;
-mod types;
+use crate::types::{HeapType, Type};
 
 #[repr(transparent)]
 pub struct Module {
@@ -82,6 +84,11 @@ impl Module {
                 external_name.as_ptr() as *const i8,
             )
         };
+    }
+
+    pub fn set_heap_type_name(&self, heap_type: HeapType, name: &str) {
+        let cstr = CString::new(name).expect("null error");
+        unsafe { BinaryenModuleSetTypeName(self.r, heap_type.id, cstr.as_ptr()) }
     }
 }
 

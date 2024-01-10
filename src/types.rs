@@ -147,7 +147,7 @@ impl Type {
         }
     }
 
-    pub fn from_heap_type(heap_type: &HeapType, nullable: bool) -> Self {
+    pub fn ref_(heap_type: HeapType, nullable: bool) -> Self {
         heap_type.get_type(nullable)
     }
 
@@ -170,7 +170,7 @@ impl Debug for Type {
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct HeapType {
-    id: BinaryenHeapType,
+    pub(crate) id: BinaryenHeapType,
 }
 impl HeapType {
     pub fn ext() -> Self {
@@ -266,10 +266,6 @@ impl HeapType {
         }
     }
 
-    pub fn from_type(typ: &Type) -> Self {
-        typ.get_heap_type()
-    }
-
     pub fn get_type(&self, nullable: bool) -> Type {
         Type {
             id: unsafe { BinaryenTypeFromHeapType(self.id, nullable) },
@@ -296,67 +292,6 @@ pub enum PackedType {
     I16 = wasm_Field_PackedType_i16_,
 }
 
-pub struct TypeBuilder {
-    r: TypeBuilderRef,
-}
-
-impl TypeBuilder {
-    pub fn new(size: u32) -> Self {
-        TypeBuilder {
-            r: unsafe { TypeBuilderCreate(size) },
-        }
-    }
-
-    pub fn get_size(&self) -> u32 {
-        unsafe { TypeBuilderGetSize(self.r) }
-    }
-
-    pub fn set_struct_type(
-        &mut self,
-        index: u32,
-        field_types: &[Type],
-        field_packed_types: &[PackedType],
-        field_mutables: &[bool],
-    ) {
-        assert!(
-            index < self.get_size()
-                && field_mutables.len() == field_types.len()
-                && field_mutables.len() == field_types.len()
-        );
-        unsafe {
-            TypeBuilderSetStructType(
-                self.r,
-                index,
-                field_types.as_ptr() as *mut BinaryenType, // Type is repr(transparent) for BinaryenType
-                field_packed_types.as_ptr() as *mut BinaryenPackedType, // PackedType is repr(u32) and BinaryenPackedType is u32
-                field_mutables.as_ptr() as *mut bool,
-                field_mutables.len() as i32,
-            )
-        }
-    }
-
-    // consumes self, because the builder is deleted
-    pub fn build(self) -> Result<Vec<HeapType>, (BinaryenIndex, TypeBuilderErrorReason)> {
-        let mut error_index: BinaryenIndex = 0;
-        let mut error_reason: TypeBuilderErrorReason = 0;
-        let mut heap_types: Vec<HeapType> = Vec::new();
-        heap_types.resize(self.get_size() as usize, HeapType { id: 0 });
-        let x = unsafe {
-            TypeBuilderBuildAndDispose(
-                self.r,
-                heap_types.as_mut_ptr() as *mut usize,
-                &mut error_index,
-                &mut error_reason,
-            )
-        };
-        if x {
-            Ok(heap_types)
-        } else {
-            Err((error_index, error_reason))
-        }
-    }
-}
-
 #[test]
 fn test_types() {
     let none = Type::none();
@@ -376,6 +311,9 @@ fn test_types() {
     let pair_vec = i32_pair.iter().collect::<Vec<_>>();
     assert_eq!(pair_vec, vec![Type::int32(), Type::int32()]);
 
+    let i32_vec = Type::int32().iter().collect::<Vec<_>>();
+    assert_eq!(i32_vec, vec![Type::int32()]);
+
     let duplicate_pair = Type::tuple(&pair_vec);
     assert_eq!(duplicate_pair, i32_pair);
 
@@ -391,16 +329,11 @@ fn test_types() {
 
     let eq = Type::eqref().get_heap_type();
     assert_eq!(eq, HeapType::eq());
-    let ref_null_eq = Type::from_heap_type(&eq, true);
+    let ref_null_eq = Type::ref_(eq, true);
     assert_eq!(ref_null_eq.get_heap_type(), eq);
     assert!(ref_null_eq.is_nullable());
     let ref_eq = eq.get_type(false);
     assert_ne!(ref_eq, ref_null_eq);
-    assert_eq!(HeapType::from_type(&ref_eq), eq);
+    assert_eq!(ref_eq.get_heap_type(), eq);
     assert!(!ref_eq.is_nullable());
-}
-
-#[test]
-fn type_builder() {
-    let mut _builder = TypeBuilder::new(4);
 }
